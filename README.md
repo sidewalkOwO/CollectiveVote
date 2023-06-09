@@ -1,7 +1,7 @@
-1. submit card
+1✓ submit card
 2. view unvoted cards
 3. view voted cards
-4. vote on card (only seeable by the user)
+4✓? vote on card (only seeable by the user)
 5. view card votes
 6. change/delete submitted card
 
