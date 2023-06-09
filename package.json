@@ -4,7 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "prep": "node deploy-commands.js",
     "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.11.0",
+    "sqlite3": "^5.1.6"
   },
   "author": "",
   "license": "ISC"
