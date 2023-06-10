@@ -4,7 +4,7 @@ const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const { token } = require('./config.json');
 const sqlite3 = require('sqlite3').verbose();
 var db = new sqlite3.Database("./epd.db");
-var dbCommands = require('./dbCommands');
+const dbCommands = require('./dbCommands');
 
 dbCommands.init(db);
 

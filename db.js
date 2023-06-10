@@ -9,10 +9,15 @@ var db = new sqlite3.Database("./epd.db");
 	console.log("a " + JSON.stringify(row));
 });*/
 
+/*db.each("SELECT rowid, cardName FROM Submission", (err, row) => {
+	console.log(JSON.stringify(row));
+});*/
+
 db.run("drop table IF EXISTS Card");
 db.run("drop table IF EXISTS Submission");
+db.run("drop table IF EXISTS Vote");
 
-var sqlTable = "";
+/*var sqlTable = "";
 sqlTable += "create table if not exists Card ( ";
 sqlTable += "cardName varchar(100) not null,  ";
 sqlTable += "link varchar(200) not null,  ";
@@ -31,7 +36,7 @@ sqlTable += "type smallint not null,  ";
 sqlTable += "link varchar(200) not null,  ";
 sqlTable += "linkBefore varchar(200),  ";
 sqlTable += "submitter varchar(100),  ";
-sqlTable += "optional_text varchar(200),  ";
+sqlTable += "optionalText varchar(200),  ";
 sqlTable += "createTime datetime,";
 sqlTable += "week integer,";
 sqlTable += "FOREIGN KEY(cardName) REFERENCES Card(cardName)";
