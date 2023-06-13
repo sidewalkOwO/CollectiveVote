@@ -1,3 +1,8 @@
+SETUP:
+https://www.ionos.com/digitalguide/server/know-how/creating-discord-bot/
+
+---
+TODO:
 1. submit card ✅
 2. view unvoted cards
 3. view voted cards
