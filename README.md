@@ -1,12 +1,13 @@
 SETUP:
 https://www.ionos.com/digitalguide/server/know-how/creating-discord-bot/
 
-1. download the entire file to your computer.
-2. download NodeJS
-3. 
-4. In command prompt, run "CD your_file_directory"
-5. In command prompt, run "npm i"
-6. In command prompt, run "node index.js"
+1. download NodeJS
+2. download the entire file to your computer.
+3. create {config.json} in the directory
+4. input {token:???} in config.json
+5. In command prompt, run "CD your_file_directory"
+6. In command prompt, run "npm i"
+7. In command prompt, run "node index.js"
 ---
 TODO:
 1. submit card ✅
