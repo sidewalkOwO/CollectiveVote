@@ -4,7 +4,7 @@ https://www.ionos.com/digitalguide/server/know-how/creating-discord-bot/
 1. download NodeJS
 2. download the entire file to your computer.
 3. create {config.json} in the directory
-4. input {token:???} in config.json
+4. input {token:your_discord_bot_token} in config.json
 5. In command prompt, run "CD your_file_directory"
 6. In command prompt, run "npm i"
 7. In command prompt, run "node index.js"
