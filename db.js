@@ -9,7 +9,7 @@ var db = new sqlite3.Database("./epd.db");
 	console.log("a " + JSON.stringify(row));
 });*/
 
-/*db.each("SELECT rowid, cardName FROM Submission", (err, row) => {
+/*db.each("SELECT * FROM vote", (err, row) => {
 	console.log(JSON.stringify(row));
 });*/
 

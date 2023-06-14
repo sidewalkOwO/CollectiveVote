@@ -1,8 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, ComponentType, SlashCommandBuilder } = require('discord.js');
 const https = require('https');
-const sqlite3 = require('sqlite3').verbose();
-var db = new sqlite3.Database("./epd.db");
-//const dbCommands = require('./dbCommands');
+const dbCommands = require('../../dbCommands');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -30,6 +28,8 @@ module.exports = {
 		const cardLink = interaction.options.getString('card_link');
 		const optionalText = interaction.options.getString('optional_text');
 		const submissionType = interaction.options.getString('submission_type')||"CARD";
+
+		const typeToTag = {"CARD":"[Card]", "DC":"[DC]", "UPDATE":"[Update]"};
 		
 		https.get("https://server.collective.gg/api/cardByImgUrl/" + encodeURIComponent(cardLink), res => {
 			let data = [];
@@ -42,15 +42,15 @@ module.exports = {
 				const json = JSON.parse(Buffer.concat(data).toString());
 
 				try{
-					let name = json["card"]["name"];
+					let cardName = json["card"]["name"];
 					let ownerId = json["card"]["owner_id"];
 
-					if(name && ownerId){
+					if(cardName && ownerId){
 						if(submissionType=="UPDATE"){
-							submitUpdate(name, ownerId);
+							submitUpdate(cardName, ownerId);
 						}
 						else{
-							submitCard(name, ownerId);
+							submitCard(cardName, ownerId);
 						}
 					}
 					else{
@@ -67,81 +67,56 @@ module.exports = {
 			interaction.reply('Submission failed! Unable to fetch card from server.');
 		});
 
-		function submitCard(name, ownerId){
+		function submitCard(cardName, ownerId){
 			try{
-				var sqlCheck = "SELECT link FROM Card WHERE cardName=?";
-				db.get(sqlCheck, [name], (err, row) => {
-					if(row && row["link"]){
-						interaction.reply(row["link"] + "\n" + "Already exists!");
-						return;
-					}
-					else{
-						var sqlInsert = "INSERT INTO Card (cardName,link,creator,submitter,createTime,week)";
-						sqlInsert += " VALUES (?,?,?,?,datetime('now'), FLOOR( (JULIANDAY(datetime('now')) - JULIANDAY(date('2018-04-05')))/7 ) ) ";
-						db.run(sqlInsert, [name, cardLink, ownerId, interaction.user.id]);
-
-						var sqlInsert = "INSERT INTO Submission (cardName,type,link,linkBefore,submitter,optionalText,createTime,week)";
-						sqlInsert += " VALUES (?,?,?,?,?,?,datetime('now'), FLOOR( (JULIANDAY(datetime('now')) - JULIANDAY(date('2018-04-05')))/7 ) ) ";
-						db.run(sqlInsert, [name, submissionType, cardLink, null, interaction.user.id, optionalText]);
-
-						db.get("SELECT LAST_INSERT_ROWID() AS insertId", (err, row) => {
-							//console.log(JSON.stringify(row));
-
-							if(row && row["insertId"]){
-								submissionReply(row["insertId"], name, ownerId);
-							}
-							else{
+				dbCommands.selectLink(cardName).then(
+					(fetchLink) => {//success
+						interaction.reply(fetchLink + "\n" + "Already exists!");
+				  	}, 
+					(fail) => {//fail
+						dbCommands.insertSubmissionCard(cardName, submissionType, cardLink, ownerId, interaction.user.id, optionalText).then(
+							(insertId) => {//success
+								submissionReply(insertId, cardName, ownerId);
+							}, 
+							(fail) => {//fail
 								interaction.reply("Submission failed!\n(Database error)");
 							}
-						});
+						);
 					}
-				});
+				);
 			}
 			catch(err){
 				console.log(err);
 				interaction.reply("database error");
-				return;
 			}
 		}
 
-		function submitUpdate(name, ownerId){
+		function submitUpdate(cardName, ownerId){
 			try{
-				var sqlCheck = "SELECT link FROM Card WHERE cardName=?";
-				db.get(sqlCheck, [name], (err, row) => {
-					if(row && row["link"]){
-						var sqlInsert = "WITH RESULT AS (SELECT ? AS cardName, ? AS type, ? AS link";
-						sqlInsert += ",? AS linkBefore,? AS submitter,? AS optionalText";
-						sqlInsert += ",datetime('now') AS createTime, FLOOR( (JULIANDAY(datetime('now')) - JULIANDAY(date('2018-04-05')))/7 ) AS week )";
-						sqlInsert += "INSERT INTO Submission (cardName,type,link,linkBefore,submitter,optionalText,createTime,week)";
-						sqlInsert += "SELECT * FROM RESULT ";
-						sqlInsert += "WHERE NOT EXISTS (SELECT 1 FROM Submission S WHERE S.type=RESULT.type AND S.link=RESULT.link AND S.week=RESULT.week) ";
-						db.run(sqlInsert, [name, submissionType, cardLink, row["link"], interaction.user.id, optionalText]);
+				dbCommands.selectLink(cardName).then(
+					(fetchLink) => {//success
 						
-						db.get("SELECT LAST_INSERT_ROWID() AS insertId", (err, row) => {
-							//console.log(JSON.stringify(row));
-							
-							if(row && row["insertId"]){
-								submissionReply(row["insertId"], name, ownerId);
-							}
-							else{
+						dbCommands.insertSubmissionUpdate(cardName, submissionType, cardLink, fetchLink, interaction.user.id, optionalText).then(
+							(insertId) => {//success
+								submissionReply(insertId, cardName, ownerId);
+							}, 
+							(fail) => {//fail
 								interaction.reply(cardLink + "\n" + "Same Update already submitted this week!");
 							}
-						});
-					}
-					else{
+						);
+				  	}, 
+					(fail) => {//fail
 						interaction.reply(cardLink + "\n" + "Card to update not in game yet!");
-						return;
 					}
-				});
+				);
 			}
 			catch(err){
 				console.log(err);
 				interaction.reply("database error");
-				return;
 			}
 		}
 
-		function submissionReply(submissionId, name, ownerId){
+		function submissionReply(submissionId, cardName, ownerId){
 			const bt_upvote = new ButtonBuilder()
 				.setCustomId('Upvote')
 				.setStyle(ButtonStyle.Primary)
@@ -162,17 +137,14 @@ module.exports = {
 			
 
 			var replyContent = "";
-			if(submissionType=="CARD"){
-				replyContent = "[Card]";
+			
+			var tag = typeToTag[submissionType];
+			if(!tag){
+				tag = "";
 			}
-			else if(submissionType=="DC"){
-				replyContent = "[DC]";
-			}
-			else if(submissionType=="UPDATE"){
-				replyContent = "[Update]";
-			}
+			replyContent += tag;
 
-			replyContent += " " + name;
+			replyContent += " " + cardName;
 			if(optionalText){
 				replyContent += " (" + optionalText + ")";
 			}
@@ -191,18 +163,32 @@ module.exports = {
 					var content = "";
 					switch(b.customId){
 						case "Upvote":{
+							dbCommands.vote(submissionId, interaction.user.id, 1);
+
 							content = "You have upvoted the submission 👍";
 							voteReply(b, content);
+
 							break;
 						}
 						case "Downvote":{
+							dbCommands.vote(submissionId, interaction.user.id, -1);
+
 							content = "You have downvoted the submission 👎";
 							voteReply(b, content);
+
 							break;
 						}
 						case "Novote":{
+							dbCommands.vote(submissionId, interaction.user.id, 0);
+
 							content = "You are neutral to the submission 👐";
 							voteReply(b, content);
+
+							break;
+						}
+						case "Comment":{
+							content = "Comment for the " + tag + " " + cardName + " :";
+							commentReply(b, content);
 							break;
 						}
 					}
@@ -220,6 +206,23 @@ module.exports = {
 				.addComponents(bt_comment);
 
 			collected.reply({ content: content, ephemeral: true, components: [row] });
+		}
+
+		function commentReply(collected, content){
+			const modal = new ModalBuilder()
+			.setCustomId('commentModal')
+			.setTitle('Add Comment');
+
+			const commentInput = new TextInputBuilder()
+			.setCustomId('commentInput')
+			.setLabel(content)
+			.setStyle(TextInputStyle.Paragraph);
+
+			const firstActionRow = new ActionRowBuilder().addComponents(commentInput);
+
+			modal.addComponents(firstActionRow);
+
+			collected.showModal(modal);
 		}
 	},
 };
